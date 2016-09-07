@@ -1,0 +1,60 @@
+.\" Copyright (c) E2 Systems
+.\" Some of the wording copyright Regents of the University of California
+.\" @(#) $Name$ $Id$ Copyright (c) E2 Systems Limited 1992.
+.TH NATQ 1 "17 September 1989"
+.SH NAME
+natq \- print the queues of jobs waiting to be run
+.SH SYNOPSIS
+.B natq
+.RB [ " \-c " ] 
+.RB [ " \-n " ] 
+.RB [ " \-l " ] 
+.RB [ " \-q queue" ] 
+.I username  .\|.\|. 
+.SH DESCRIPTION
+.I natq 
+.IX  "natq command"  ""  "\fLnatq\fP \(em display job execution queues"
+.IX  "network delayed execution"  "display network queue \(em \fLnatq\fP"
+.IX  "display" "network delayed execution queue \(em \fLnatq\fP"
+.IX  queue  "display network delayed execution"  ""  "\fLnatq\fP \(em display network delayed execution"
+prints the queues of jobs, created with the
+.IR nat (1)
+command, that are waiting to be run (at later time) or currently executing.  
+.LP
+With no flags, the queue is sorted in chronological order of execution.
+.PP
+If no usernames are specified, the entire queue is displayed; otherwise,
+only those network jobs belonging to the named users are displayed.
+.SH OPTIONS
+.TP
+.B \-c
+By creation time.  Sorted the queue by the time that the 
+.IR nat (1)
+command was given, the oldest created job first. 
+.TP
+.B \-n
+Number of network jobs.  Print the total number of network jobs currently
+in the queue.  Do not list them.
+.TP
+.B \-l
+Display a long listing; show the group, mail status, shell, restart status,
+resubmission details, and creation date, as well as whether or not executing,
+rank, date for execution, job owner, number, name and execution parameters.
+Also show the queue availability in the heading.
+.TP
+.B \-q queue
+Display queue 'queue', rather than the default, 'nat'.
+.TP
+.B \-a
+Display all queues, one after the other.
+.TP
+.SH FILES
+.TP 15
+.I /usr/spool/nat
+spool area
+.PD
+.SH "INSTALLATION"
+.B natq
+must be owner natman, group daemon, and mode 06755.
+.SH "SEE ALSO"
+nat(1), natrm(1), natrun(8)

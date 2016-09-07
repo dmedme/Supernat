@@ -1,0 +1,543 @@
+.\" @(#) $Name$ $Id$ Copyright (c) E2 Systems Limited 1992.
+.TH E2CALC 1 "17 October 1992"
+.SH NAME
+e2calc \- A calculator user Exit for shells and forms
+.SH SYNOPSIS
+.PP
+Provides a calculator for use from within the shell or forms.
+.SH DESCRIPTION
+.PP
+e2calc() is a function that implements the #e2calc User Exit, a
+calculator/validation facility for SQL*FORMS that can be used
+in place of SELECT .... FROM DUAL WHERE ...., and in place of
+multiple trigger steps with #COPY in version 2.2 of forms.
+.PP
+e2calc() typically consumes a tenth of the resources chewed up by
+SELECT ... FROM DUAL WHERE.... Putting it into to the Customer
+Order Entry screen at UDGA speeded it up by about 15% - 20%.
+.PP
+e2calc() is invoked from a form by placing
+#e2calc <sequence of terms according to the yacc grammar below >
+as the trigger text.
+.PP
+If the terms do not conform to the grammar, e2calc() returns
+IAPFTL, and outputs as the error message the place in the trigger
+text that it reached. This is usually slightly beyond where the
+the mistake has been made.
+.PP
+The yacc grammar is the definitive arbiter
+of how e2calc() will behave. The following notes are intended to
+amplify and clarify it.
+.PP
+e2calc() is then called from within iap, and is passed the trigger
+text as the parameter string p.
+.PP
+The terms within the trigger step are either
+assignments and conditions. These are separated one from
+another by semi-colons (or commas, which can be used interchangeably).
+.PP
+White space is ignored except when it occurs in strings.
+.PP
+An assignment is an expression
+of the form IDENT = expression, where IDENT is an SQL*FORMS GLOBAL or a
+a block variable. The variable name does not havee to be qualified, but
+it is good practice for it to be so.
+.PP
+A condition is any other expression.
+.PP
+e2calc() recognises three types: date; number/boolean; string.
+.PP
+e2calc() gives all expressions both a numeric/boolean value, and a string value.
+Some expressions may also be dates.
+.PP
+Strings have the value false, for boolean purposes.
+.PP
+During its manipulations e2calc() program to preserve the meaning
+in the date attributes, and numeric
+attributes, as far as possible. However, its response to possible errors
+is to use the type value that makes sense. It gives alphanumeric strings
+a boolean/numeric value of zero. So, if two alpha strings are multiplied
+together, the boolean values will be used, and zero will result. 
+.PP
+Numbers and alphanumeric strings are recognised implicitly. Dates must
+be declared explicitly, with TO_DATE() or as SYSDATE.
+.PP
+The '+' sign serves as a concatenation operator when the arguments are
+strings; note that two numeric strings cannot be concatenated, except
+perhaps by '01234' + '' +'5678'.
+.PP
+Strings cannot have embedded delimiters, but concatenation and alternative
+delimiters (\'"`) provide work-rounds.
+.PP
+Arithmetic is double precision floating point, giving about 20 digits
+of precision. This is half of what ORACLE provided internally. In
+addition, the floating point package is based on binary rather than
+binary coded decimal arithmetic, so watch out for problems with
+rounding decimal numbers.
+.PP
+All of the 'C' arithmetic operators are supported, with the following
+exceptions;
+.nf
+  - (post|pre)-(in|dec)rement
+  - the '+=' type assignments
+  - the = assignment only works as the extreme left hand expression
+  - all expressions are evaluated when considering ? :, &&, || etc.
+.fi
+.PP
+e2calc() returns either when all the text has been parsed and
+evaluated, or when a condition has evaluated false.
+.PP
+A condition can be associated with an error message, which will be
+displayed in preference to the trigger fail step, should it evaluate
+to false, thus:
+.PP
+ condition ERR_MSG ( string expression )
+.PP
+This provides a means for putting out dynamic messages, if required; supply
+a condition of the form  0 == 1, and a string expression that includes
+variable values.
+.PP
+e2calc will return IAPFAIL if a condition evaluates false,
+otherwise it will return IAPSUCC.
+.PP
+Multiple disjointed conditions act as if linked by && operators; they
+have an efficiency advantage over multiple && operators, since the
+evaluation ceases if any evaluates false. Ordinarily, all tests are
+evaluated.
+.PP
+It is not useful to input assignments and a condition, unless the
+assignments are only to be actioned if the condition is true (since the
+assignments are thrown away if the user exit returns IAPFAIL).
+.PP
+SYSDATE is recognised as the UNIX system date and time. Its
+string format is 'DD-MMM-YYYY'.
+.PP
+A number of functions are provided. These are based fairly closely
+on standard ORACLE SQL functions.
+.PP
+Function IS_DATE (string,format_string) tests whether the string is a
+valid date. It does not distinguish between different cases for
+Months, days of the week etc..
+.PP
+Function TO_DATE (string,format_string) converts a valid date string to a
+data item of type date (from the point of view of this routine).
+.PP
+Function TO_CHAR (date,format_string) converts a date value into a
+date string. Note that TO_CHAR for numbers is not supported, and is not
+necessary.
+.PP
+Date arithmetic is supported; you can add or subtract days to or from
+a date.
+.PP
+Subtraction will give you the days between two dates.
+.PP
+Function TRUNC (number) (truncate to integer) (or TRUNC (number,number)
+(truncate to so many decimal places)) is analogous to the
+SQL TRUNC operator, but does not support the Date/Time truncation.
+ROUND is not supported explicitly, but it can be achieved as
+TRUNC(x+0.5). TRUNC on dates has no effect.
+.PP
+Function LENGTH(string) returns the length of a string, just like the
+SQL LENGTH() function.
+.PP
+Function UPPER(string) converts any lower case characters to upper case
+in the string, just like the SQL UPPER() function.
+.PP
+Function LOWER(string) converts any upper case characters to lower case
+in the string, just like the SQL LOWER() function.
+.PP
+Function SUBSTR(string,number,number) reproduces the behaviour of the
+SQL SUBSTR() function (including its behaviour with funny numbers).
+.PP
+Function INSTR(string,string) reproduces the behaviour of the
+ORACLE SQL INSTR() function.
+.PP
+Function GETENV(expr) returns the value of the UNIX environment variable.
+It returns a zero length string if the UNIX getenv() call fails.
+.PP
+Function PUTENV(expr) sets the value of a UNIX environment variable.
+It can be used, as it is in pick.inp, to communicate with a shell
+script called from the iap image but not by the particular form itself.
+.PP
+Function SYSTEM(expr) returns the exit value of the UNIX command executed.
+This function provides an alternative to #HOST, appropriate if the command
+is to be run asynchronously, and there is no wish to clear the screen.
+.PP
+.SH EXAMPLES
+.fi
+.PP
+The following example sets some GLOBALS. Note:
+  - it is case insenstive
+  - the global need not exist in advance
+  - there is no limit on the number of assigns that are permitted
+.nf
+#e2calc
+GLOBAL.OEORDER_NO = three.ORDER_NO;
+GLOBAL.OELINE_NO = three.LINE_NO;
+GLOBAL.OEORDER_CODE = three.ORDER_CODE;
+GLOBAL.OEPART_NO = three.PART_NO;
+GLOBAL.OECONTRACT = three.CONTRACT;
+GLOBAL.OECATALOG_NO = three.CATALOG_NO;
+GLOBAL.BUY_QTY_DUE = three.BUY_QTY_DUE;
+GLOBAL.CONVERSION = three.catalog_conversion;
+GLOBAL.status_code = three.status_code;
+GLOBAL.REVISED_DUE_DATE = two.REVISED_DUE_DATE;
+GLOBAL.credit_hold_flag = two.credit_hold_flag;
+GLOBAL.CUSTOMER_NO = two.CUSTOMER_NO;
+.fi
+.PP
+In the next example, evaluation ceases if the first test fails.
+If it succeeds, three.new_qty is set to 'Y', and three.pg_qtydue
+is assigned the an analogue of nvl(three.pg_qtydue,0).
+.nf
+#e2calc
+(three.old_qtydue != three.buy_qty_due);
+three.new_qty = 'Y';
+three.pg_qtydue = (three.pg_qtydue == '') ? 0 :three.pg_qtydue;
+.fi
+.PP
+Here a more complex logical expression is evaluated. If
+(three.avail_res - three.pg_qtydue) is greater than 0,
+three.qty_backordered is set to zero. Otherwise it is set to the difference
+between three.pg_qtydue and three.avail_res.
+.nf
+#e2calc
+three.qty_backordered =((three.avail_res - three.pg_qtydue) > 0) ? 
+                  0 : (three.pg_qtydue - three.avail_res);
+.fi
+.PP
+Here are some examples of the truncation function being used to
+effect rounding to two decimal places.
+.nf
+#e2calc
+three.net_price = trunc(three.duty_paid_price - three.temp_disc_value+0.005,2);
+three.special_disc = (three.temp_disc_value == '') ? 0 : three.temp_disc_value;
+three.total_disc = trunc(((three.temp_disc_value=='')?
+                       0 : three.temp_disc_value)
+      + ((three.agg_disc == '') ? 0 : three.agg_disc)+0.005,2);
+three.kap_disc = (three.deal_type == 'K') ?  three.temp_disc_value : 0;
+three.dds_disc = (three.deal_type == 'D') ?  three.temp_disc_value : 0;
+three.set_agg_disc = three.agg_disc_applies;
+three.pg_qtyres = ((three.avail_res - three.pg_qtydue) > 0) ?
+           three.pg_qtydue : three.avail_res;
+three.qty_backordered = ((three.avail_res - three.pg_qtydue) > 0) ?
+           0 : (three.pg_qtydue - three.avail_res);
+.fi
+.PP
+In the next example:
+.nf
+  - if cartons and units are both zero, an error message is issued
+    and failure is returned.
+  - if the order is less than the minimum order quantity,  an error
+    message is issued and failure is returned.
+  - if the order is more than the maximum, failure is returned.
+  - if all tests are passed, the quantity is calculated rounded to 6 decimal
+    places.
+.fi
+Note that the ERR_MSG error messages over-ride the message specified for
+the trigger step. The message for this step was appropriate to the
+third of the tests, which is why ERR_MSG was not used there also.
+.PP
+Note also that e2calc() cannot see the results of its calculations
+within one trigger step. The expression for five.temp_qty is evaluated
+here three times. In order to do the evaluation once, it would have
+been necessary to do it in a preceding step.
+.nf
+#e2calc
+((three.cartons + three.units) != 0) ERR_MSG("Must be non zero");
+((three.cartons + trunc(three.units / three.units_conversion + 0.0000005, 6))
+        >= trunc(three.min_order_qty + 0.0000005, 6))
+ERR_MSG("Must be greater than the minimum Order Quantity");
+((three.cartons + trunc(three.units / three.units_conversion + 0.0000005, 6))
+ <= 8960);
+five.temp_qty = three.cartons +
+   trunc(three.units / three.units_conversion + 0.0000005, 6);
+.fi
+.PP
+The next examnple illustrates the OR operator (||) in a condition.
+the assignments will not take place unless the condition is true.
+.nf
+#e2calc
+((three.special_disc + three.agg_disc) <= three.duty_paid_price) ||
+(three.duty_paid_price == 0);
+three.total_disc = trunc(three.special_disc + three.agg_disc + 0.005,2);
+three.net_price = trunc(three.duty_paid_price - three.special_disc -
+      three.agg_disc+0.005,2);
+.fi
+.PP
+This next is a simple condition. Note that #e2calc has absolutely
+no effect on how SQL*FORMS branches between trigger steps etc..
+This works in just the same way as it does with SELECT ... FROM DUAL
+WHERE...
+.nf
+#e2calc
+(three.net_price <= three.duty_paid_price);
+.fi
+.PP
+The next example illustrates the use of the negation operator (!)
+to reverse the sense of a condition. This statement outputs the
+appropriate message and returns failure if global.order_hold_reason is
+2, 1, 4, 3 or 5. Note that the trigger step that this example is taken
+from would not have aborted on failure; the purpose is to output an
+informational message.
+.nf
+#e2calc
+!(global.order_hold_reason == 2) ERR_MSG("This Customer Bill To is currently inactive. Order on hold.");
+!(global.order_hold_reason == 1)
+ERR_MSG("This Customer is currently inactive. Order on hold.");
+!(global.order_hold_reason == 4)
+ERR_MSG("The order value exceeds the credit limit for "+
+"Customer Bill To. Order on hold");
+!( global.order_hold_reason == 3)
+ERR_MSG("Exceeds Credit Limit for Customer," +
+" or Customer on Credit Hold. Order on hold.");
+!(global.order_hold_reason == 5 )
+ERR_MSG("Customer Balance overdue greater than 60 days. Order on hold.");
+.fi
+.PP
+The next example illustrates that it is preferable, if possible, to
+avoid the use of the AND operator (&&), using instead a succession of
+tests. The reason for this is that e2calc will evaluate all the
+conditions ANDed together, even though it has already found one that
+failed. the succession of tests is more efficient.
+.nf
+#e2calc
+two.customer_class == 'RE';
+three.deal_type != 'K';
+three.net_price != 0;
+.fi
+.PP
+The following monster just illustrates that there is no effective
+limit on how many assignments there may be.
+.nf
+#e2calc
+two.customer_no= (one.customer_no == '') ?
+                  onehalf.customer_no : one.customer_no;
+ two.order_no= onehalf.order_no;
+ two.bill_to_location= (one.bill_to_location == '') ?
+                  onehalf.bill_to_location : one.bill_to_location;
+ two.ship_to_location= (one.ship_to_location  == '') ?
+                  two.ship_to_location : one.ship_to_location ;
+ two.name= (one.ship_to_name == '') ?  two.name : one.ship_to_name;
+ two.abbreviation= onehalf.abbreviation;
+ two.total_order_value= (two.total_order_value == '') ?
+                  0 : two.total_order_value;
+ two.order_code= onehalf.order_code;
+ two.customer_class= (one.customer_class == '') ?
+                  two.customer_class : one.customer_class;
+ two.total_shipped_value= (two.total_shipped_value == '') ?
+                  0 : two.total_shipped_value;
+ two.status_code= onehalf.status_code;
+ two.under_bond= (onehalf.under_bond == '') ?
+                  one.under_bond : onehalf.under_bond;
+ two.allow_backorders= (one.allow_backorders == '') ?
+                  onehalf.allow_backorders : one.allow_backorders;
+ two.customer_po_no= onehalf.customer_po_no;
+ two.revised_due_date= onehalf.revised_due_date;
+ two.due_date= onehalf.due_date;
+ two.ship_via_code= onehalf.ship_via_code;
+ two.sales_office= onehalf.sales_office;
+ two.territory= onehalf.territory;
+ two.area= onehalf.area;
+ two.sales_warehouse= onehalf.sales_warehouse;
+ two.grade= onehalf.grade;
+ two.tax_exempt_flag= onehalf.tax_exempt_flag;
+ two.date_entered= onehalf.date_entered;
+ two.credit_hold_flag= (one.cust_credit_hold == '') ?
+                  onehalf.cust_credit_hold : one.cust_credit_hold;
+ two.bill_to_credit_limit= (one.bill_to_credit_limit == '') ?
+                  onehalf.bill_to_credit_limit : one.bill_to_credit_limit;
+ two.cust_credit_limit= (one.cust_credit_limit == '') ?
+                  two.cust_credit_limit : one.cust_credit_limit;
+ two.cust_active= (onehalf.cust_active == '') ? one.cust_active :
+                    onehalf.cust_active;
+ two.billto_active=(onehalf.bill_active == '') ? one.bill_active :
+                     onehalf.bill_active;
+ two.ship_type= (one.ship_type == '') ?
+                  two.ship_type : one.ship_type;
+ two.ship_to_state= (one.ship_to_state == '') ?
+                  two.ship_to_state : one.ship_to_state;
+ two.have_cust_balance= 'N';
+ two.overdue_bal = (two.overdue_bal == '') ? 0 : two.overdue_bal;
+.fi
+.PP
+This illustrates the SUBSTR() function.
+.nf
+#e2calc
+ONE.PAREA = SUBSTR(BILL_TO_PHONE,1,3);
+ONE.EXCH = SUBSTR(BILL_TO_PHONE,4,3);
+ONE.TRUNK = SUBSTR(BILL_TO_PHONE,7,4);
+.fi
+.PP
+This illustrates the use of SYSDATE. Beware, however, of using it near
+midnight; the date routine is a bit dodgy where Daylight Saving Time
+is concerned.
+.PP
+#e2calc
+onehalf.last_activity_date = SYSDATE;
+onehalf.successful = 'Y';
+.fi
+.PP
+This is another illustration of how the e2calc() cannot see the results
+of the changes that it has made. Had the second line been
+two.maxline = three.line_no; two.max_line would have been set to the value
+that three.line_no had PRIOR to the executionbb of the trigger.
+.nf
+#e2calc
+three.line_no = (two.maxline == '') ? 1 : two.maxline + 1;
+two.maxline = (two.maxline == '') ? 1 : two.maxline + 1;
+.fi
+.PP
+The next example shows how pick.inp communicates with the pick shell script that
+submits the pick report requests. The request always contains a
+warehouse, a user name and an order number. It contains a line number
+and a release number if these are not null.
+.nf
+#e2calc
+PUTENV("PICK_ARGS=-w "+one.contract+" -u "+one.user_name+" -o "+one.orderno+
+((one.lineno == '') ? '' : (" -l "+one.lineno)) +
+((one.relno2 == '') ? '' : (" -r "+one.relno2))) == 0;
+.fi
+.PP
+It is sometimes a good idea to make SQL*FORMS hidden fields visible
+whilst debugging a form.  The e2calc() ERR_MSG() feature provides an
+alternative with the advantage of pausing the application at critical
+points. The last example provides an illustration. This trigger
+will show the text  " three.new_qty = " followed by the value
+of three.new_qty followed by the text " three.pg_qtydue = "
+followed by the value of three.pg_qtydue.
+.nf
+#e2calc
+(0 == 1) ERR_MSG (" three.new_qty = " + three.new_qty + " three.pg_qtydue = "+
+three.pg_qtydue);
+.nf
+Grammar Definition
+------------------
+.fi
+.PP
+The operators and whether they are left or right associative are
+listed in increasing order of binding power.
+.nf
+Association  Operators
+-----------  --------
+ right       '='
+ right       '?' ':'
+ left        '||'
+ left        '&&'
+ left        '|'
+ left        '^'
+ left        '&'
+ left        '==' '!='
+ left        '<' '>' '<=' '>='
+ left        '<<' '>>'
+ left        '+' '-'
+ left        '*' '/' '%'
+ left        Unary Minus ('-')
+ right       '!' '~'
+.fi
+.PP
+The Grammar that must be followed, and which drives the evaluation, is
+as follows.
+.nf
+list :               /* ie. Empty */
+     | list ';'
+     | error
+     | list stat 
+     | list error
+     ;
+.nf
+stat : assnstat
+     | condstat
+     ;
+condstat : expr 
+     | expr 'ERR_MSG' '(' expr ')'
+     ;
+assnstat : IDENT '=' expr 
+     ;
+.nf
+expr : '(' expr ')'
+     | expr '==' expr
+     | expr '!=' expr
+     | expr '>=' expr
+     | expr '<=' expr
+     | expr '<' expr
+     | expr '>' expr
+     | expr '+' expr
+     | expr '-' expr
+     | expr '*' expr
+     | expr '/' expr
+     | expr '&' expr
+     | expr '|' expr
+     | expr '&&' expr
+     | expr '?' expr ':' expr
+     | expr '||' expr
+     | expr '^' expr
+     | expr '>>' expr
+     | expr '<<' expr
+     | expr '%' expr
+     | '-' expr %prec UMINUS
+     | '!' expr 
+     | '~' expr 
+     | 'IS_DATE' '(' expr ',' expr ')'
+     | 'TO_DATE' '(' expr ',' expr ')'
+     | 'TO_CHAR' '(' expr ',' expr ')'
+     | 'TRUNC' '(' expr ',' expr ')'
+     | 'INSTR' '(' expr ',' expr ')'
+     | 'SUBSTR' '(' expr ',' expr ',' expr ')'
+     | 'TRUNC' '(' expr ')'
+     | 'GETENV' '(' expr ')'
+     | 'PUTENV' '(' expr ')'
+     | 'SYSTEM' '(' expr ')'
+     | 'UPPER' '(' expr ')'
+     | 'SYSDATE'
+     | STRING
+     | IDENT
+     | NUMBER
+     ;
+.fi
+.PP
+IDENT (= identifier), STRING and NUMBER are what you would expect, with
+the following exception. Identifiers CANNOT be preceded by ':' or
+'&', as is sometimes allowed in SQL*FORMS macros. These characters
+are reserved for other purposes.
+.PP
+.PP
+.SH INSTALLATION
+.PP
+You need to have the file datlib.o to link in the date
+validation and conversion routines. Otherwise, follow the
+standard procedure to incorporate a user exit into iap.
+.PP
+When maintaining this program, always start from the yacc specification
+rather than one of its descendents.
+.PP
+The following sequence of shell commands does the necessary conversion
+from e2calc.y to the form required by the PCC ORACLE pre-processor.
+.nf
+	yacc e2calc.y
+#                       standard yacc parser generation
+	sed < y.tab.c '/	printf/ s/	printf[ 	]*(/ fprintf(errout,/g' > y.tab.pc
+#                       Change the yacc debugging code to write to the
+#                       error log file rather than stdout.
+	sed < y.tab.pc '/^# *line/d' > e2calc.pc 
+#                       Remove the line directives that supposedly allow
+#                       the source line debugger to place you in the
+#                       absolute source file (i.e. the .y) rather than the
+#                       .c. This feature (of pdbx) does not work properly;
+#                       the debugger does recognise the line numbers, but is
+#                       not able to recognise the source files, so it places
+#                       you at random points in the .c.
+#
+# If compiled with -DDEBUG, each run of the program produces a family of
+# of files that allow the trigger steps to be traced. The files are
+# named e2calc???, in the current directory.
+#
+# If in addition e2calc.c is compiled with -DYYDEBUG, the yacc parser
+# diagnostics are also placed in these files.
+.fi
+.SH NOTES
+.PP
+If it is ever necessary to link this code with another derived from
+a yacc specification, the sed script that derives the .pc from y.tab.c
+must be extended to do something to the yy.* variables, to avoid linkage
+problems.

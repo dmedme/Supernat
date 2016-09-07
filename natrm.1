@@ -1,0 +1,62 @@
+.\" Copyright (c) E2 Systems
+.\" Some of the wording copyright Regents of the University of California
+.\" @(#) $Name$ $Id$ Copyright (c) E2 Systems Limited 1992.
+.TH NATRM 1 "17 September 1989"
+.SH NAME
+natrm \- remove network jobs spooled by nat
+.SH SYNOPSIS
+.B natrm
+.RB [ " \-fiq queue " ] 
+.RB [ " \- " ] 
+.RI [ " job-number " "].\|.\|." 
+.RI [ " username " "].\|.\|."
+.SH DESCRIPTION
+.IX  "natrm command"  ""  "\fLnatrm\fP \(em remove network delayed execution jobs"
+.IX  remove "network delayed execution jobs \(em \fLnatrm\fP"
+.IX  "delete network delayed execution jobs"  ""  "delete network delayed execution jobs \(em \fLnatrm\fP"
+.IX  "network delayed execution" "remove jobs from network queue"  ""  "remove jobs from network queue \(em \fLnatrm\fP"
+.IX  queue  "remove jobs from network delayed execution"  ""  "remove jobs from network delayed execution \(em \fLnatrm\fP"
+.I natrm
+removes delayed-execution jobs that were created with the
+.IR nat (1)
+command.  The list of jobs can be displayed by
+.IR natq (1).
+.LP
+.I natrm
+removes each 
+.I job-number
+you specify, and/or all jobs belonging to 
+.IR username ,
+provided that you own the indicated jobs.
+.PP
+Jobs belonging to other users can only be removed
+by the daemon sign-on (the super-user lacks power over the network).
+.SH OPTIONS
+.TP
+.B \-f 
+Force.  All information regarding the 
+removal of the specified jobs is suppressed.
+.TP
+.B \-i
+Interactive.
+.I natrm
+asks if a job should be removed; 
+a response of 'y' verifies that the job is to be removed.
+.TP
+.B \-q queue
+Remove from queue queue, rather than the default, nat.
+.TP
+.TP
+.B \- 
+Remove jobs that were queued by the current user.
+If invoked by the super-user, the entire queue will be flushed.
+.SH FILES
+.TP 15
+.I /usr/spool/nat
+spool area
+.PD
+.SH "INSTALLATION"
+.B natrm
+must be owner natman, group daemon, and mode 06755.
+.SH "SEE ALSO"
+nat(1), natq(1), natrun(8)

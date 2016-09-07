@@ -1,0 +1,349 @@
+#
+# M.snat 
+# @(#) $Name$ $Id$
+# Copyright (c) E2 Systems Limited 1993
+#
+# Invocation:
+#     make -e -f M.snat [ symbol ]
+# 
+# Where the optional symbol is one of the following:
+#   -  all: build all images (the default option)
+#   -  clean: remove everything extraneous (source, object)
+#   -  install: copy everything to its final position and
+#      make the files and directories
+#
+# Instructions for installation of Supernat (All rights Reserved etc.):
+#   -  Sign on as root to the machine you want to install in
+#   -  mkdir a directory
+#   -  copy the natdist.tar file into the directory
+#   -  tar xvf natdist.tar
+#   -  make -f Mk.aix install
+#
+# The remaining activities are:
+#   -  Decide on the queue policies and availabilities
+#   -  Using sam_avail_queue as a model (follow the comments) create a
+#      set of queue definitions suitable for your application
+#   -  Create new queues, following the example
+#
+# See the relevant manual pages for full details
+#
+# Note that the multiple library member syntax doesn't work on
+# ULTRIX!
+#
+#
+# Executables are:
+#  - natrun (queue manager)
+#  - nat (submit jobs to the queue)
+#  - natq (enquire on jobs still to be executed)
+#  - natrm (remove jobs from queues)
+#  - nataperm (allow users access to supernat)
+#  - natgperm (allow users access to a supernat queue)
+#  - natqadd (Add a supernat queue)
+#  - natqchg (Change queue availability details)
+#  - natqdel (Delete a supernat queue)
+#  - natqlist (List supernat queues)
+#  - natrebuild (Reconstruct supernat database queues)
+#  - natalist (List users who can access supernat)
+#  - natglist (List users who can access a supernat queue)
+#  - natcalc (Database patch utility)
+#  - naterase (Database variable remover)
+#  - natdump (Database dump utility)
+#  - natcmd  (Issue commands to natrun)
+#  - e2calc (Calculator User Exit/shell expression processor)
+#
+all: nat natq natrm\
+nataperm\
+natalog\
+natgperm\
+natqadd\
+natqchg\
+natqdel\
+natdump\
+naterase\
+natqlist\
+natrebuild\
+natalist\
+natglist\
+natcmd\
+nataview.sh\
+nataallow.sh\
+natadeny.sh\
+natgallow.sh\
+natgdeny.sh\
+natenv.sh\
+natps.sh\
+natstart.sh\
+natmenu.sh\
+natcalc\
+e2calc\
+semlock
+	@echo 'SUPERNAT V.3 make finished'
+#
+# All the images are a single binary.
+# All the images are a single inode, EXCEPT natrun. This is so
+# that it is not setuid(), as the others are.
+#**************************************************************
+# Submit jobs for execution 
+nat:natrun
+	rm -f nat
+	cp natrun nat
+#
+# Enquire on jobs
+natq:nat
+	rm -f natq
+	ln nat natq
+#
+# Remove jobs from queues
+natrm:nat
+	rm -f natrm
+	ln nat natrm
+#*************************************************************
+# Various nat utilities
+# VVVVVVVVVVVVVVVVVVVVV
+nataperm:nat
+	rm -f nataperm
+	ln nat nataperm
+natgperm:nat
+	rm -f natgperm
+	ln nat natgperm
+natqadd:nat
+	rm -f natqadd
+	ln nat natqadd
+natqdel:nat
+	rm -f natqdel
+	ln nat natqdel
+natqlist:nat
+	rm -f natqlist
+	ln nat natqlist
+natrebuild:nat
+	rm -f natrebuild
+	ln nat natrebuild
+natdump:nat
+	rm -f natdump
+	ln nat natdump
+naterase:nat
+	rm -f naterase
+	ln nat naterase
+natcmd:nat
+	rm -f natcmd
+	ln nat natcmd
+natalist:nat
+	rm -f natalist
+	ln nat natalist
+natalog:nat
+	rm -f natalog
+	ln nat natalog
+natglist:nat
+	rm -f natglist
+	ln nat natglist
+natcalc:nat
+	rm -f natcalc
+	ln nat natcalc
+natqchg:nat
+	rm -f natqchg
+	ln nat natqchg
+#
+# Queue Manager - All other nat images are links to this
+#
+natrun: natmain.c natlib.a
+	$(XPGCC) $(LFLAGS) $(CFLAGS)  -o natrun natmain.c natlib.a $(LIBS)
+#*************************************************************************
+# Non-specific utilities
+# VVVVVVVVVVVVVVVVVVVVVV
+e2calc:e2calc.o natlib.a
+	$(VCC) $(LFLAGS) $(CFLAGS) -o e2calc e2calc.o natlib.a $(LIBS)
+e2calc.o: e2calc.y
+	$(YACC) $(YEXFLAGS) e2calc.y
+	sed '/[ 	]printf/ s/[ 	]printf[         ]*(/ fprintf(errout,/g' y.tab.c |sed '/^# *line/d' > e2calc.c
+	rm -f y.tab.c
+	$(VCC) $(CFLAGS) -DSTAND -c e2calc.c
+#
+#***************************************************************************
+# The nat objects
+#
+natlib.a: nat.o natalib.o natalist.o natalog.o nataperm.o natcpars.o \
+ natcexe.o natdump.o naterase.o natglist.o natgperm.o natjlib.o natllib.o \
+ natq.o natqadd.o natqdef.o natqdel.o natqlib.o natqlist.o natrm.o natcmd.o \
+ natrun.o natsym.o natulib.o natrebuild.o $(NATSOCK)
+	$(AR) $@ $?
+	$(RANLIB) $@
+	@echo 'Supernat shared library up to date'
+natcmd.o: natcmd.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natcmd.c
+natqlist.o: natqlist.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natqlist.c
+natrebuild.o: natrebuild.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natrebuild.c
+natrun.o: natrun.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natrun.c
+natrm.o: natrm.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natrm.c
+natq.o: natq.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natq.c
+nat.o: nat.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c nat.c
+nataperm.o: nataperm.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c nataperm.c
+natgperm.o: natgperm.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natgperm.c
+natqadd.o: natqadd.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natqadd.c
+natqdel.o: natqdel.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natqdel.c
+natdump.o: natdump.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natdump.c
+naterase.o: natdump.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c naterase.c
+natalist.o: natalist.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natalist.c
+natalog.o: natalog.c supernat.h defs.h
+	$(XPGCC) $(CFLAGS) -c natalog.c
+natglist.o: natglist.c supernat.h defs.h  
+	$(XPGCC) $(CFLAGS) -c natglist.c
+natulib.o: natulib.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natulib.c
+natalib.o: natalib.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natalib.c
+natjlib.o: natjlib.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natjlib.c
+natllib.o: natllib.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natllib.c
+natqlib.o: natqlib.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natqlib.c
+natqdef.o: natqdef.c supernat.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natqdef.c
+natsock.o: natsock.c supernat.h
+	$(XPGCC) $(CFLAGS) -c natsock.c
+natsym.o: natsym.c natcexe.h supernat.h defs.h 
+	$(VCC) $(CFLAGS) -c natsym.c
+natcexe.o: natcexe.c natcpars.c supernat.h natcexe.h defs.h 
+	$(XPGCC) $(CFLAGS) -c natcexe.c
+natcpars.o: natcpars.c natcexe.h supernat.h defs.h
+	$(VCC) $(CFLAGS) -DSTAND -c natcpars.c
+natcpars.c: natcpars.y
+	$(YACC) $(YEXFLAGS) -d natcpars.y
+	mv $(HFILE) natcalc.h
+	sed '/[ 	]printf/ s/[ 	]printf[         ]*(/ fprintf(errout,/g' $(TFILE)  | sed '/^# *line/d' > natcpars.c
+	rm -f y.tab.c
+#                       Change the yacc debugging code to write to the
+#                       error log file rather than stdout.
+#
+# Clean up sources and objects
+#clean:
+#	rm -f *.o *.c *.h
+install:
+#
+# The manual pages
+#	chmod 0444 natrun.8
+#	cp natrun.8 /usr/man/man.LOCAL
+#	cp natrun.8 /usr/man/man8
+#	chmod 0444 nat.1 natrm.1 natq.1
+#	cp nat.1 natrm.1 natq.1 /usr/man/man.LOCAL
+#	cp nat.1 natrm.1 natq.1 /usr/man/man1
+#
+# The executables
+#
+	rm -f $(OWNHOME)/bin/nat*
+	cp nataview.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/nataview.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/nataview.sh
+	chmod 0755 $(OWNHOME)/bin/nataview.sh
+	cp nataallow.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/nataallow.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/nataallow.sh
+	chmod 0755 $(OWNHOME)/bin/nataallow.sh
+	cp natadeny.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natadeny.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natadeny.sh
+	chmod 0755 $(OWNHOME)/bin/natadeny.sh
+	cp natgallow.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natgallow.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natgallow.sh
+	chmod 0755 $(OWNHOME)/bin/natgallow.sh
+	cp natgdeny.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natgdeny.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natgdeny.sh
+	chmod 0755 $(OWNHOME)/bin/natgdeny.sh
+	cp natenv.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natenv.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natenv.sh
+	chmod 0755 $(OWNHOME)/bin/natenv.sh
+	cp natstart.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natstart.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natstart.sh
+	chmod 0755 $(OWNHOME)/bin/natstart.sh
+	cp natps.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natps.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natps.sh
+	chmod 0755 $(OWNHOME)/bin/natps.sh
+	cp natmenu.sh $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natmenu.sh
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natmenu.sh
+	chmod 0755 $(OWNHOME)/bin/natmenu.sh
+	cp ../e2common/natmenu $(OWNHOME)/bin
+	chown $(OWNUSER) $(OWNHOME)/bin/natmenu
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natmenu
+	chmod 0755 $(OWNHOME)/bin/natmenu
+	cp ../e2common/hisps ${OWNHOME}/bin
+	chown ${OWNUSER} ${OWNHOME}/bin/hisps
+	chgrp ${OWNGRP} ${OWNHOME}/bin/hisps
+	chmod 0755 ${OWNHOME}/bin/hisps
+	cp semlock ${OWNHOME}/bin
+	chown ${OWNUSER} ${OWNHOME}/bin/semlock
+	chgrp ${OWNGRP} ${OWNHOME}/bin/semlock
+	chmod 0755 ${OWNHOME}/bin/semlock
+#	cp ../e2common/oneproc ${OWNHOME}/bin
+#	chown ${OWNUSER} ${OWNHOME}/bin/oneproc
+#	chgrp ${MEMGRP} ${OWNHOME}/bin/oneproc
+#	chmod 02755 ${OWNHOME}/bin/oneproc
+	cp natrun $(OWNHOME)/bin
+	chown root $(OWNHOME)/bin/natrun
+	chgrp $(OWNGRP) $(OWNHOME)/bin/natrun
+	chmod 02750 $(OWNHOME)/bin/natrun
+	cp $(OWNHOME)/bin/natrun  $(OWNHOME)/bin/nat 
+	chown $(OWNUSER) $(OWNHOME)/bin/nat
+	chgrp $(OWNGRP) $(OWNHOME)/bin/nat
+	chmod 06755 $(OWNHOME)/bin/nat
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natq 
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natrm 
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/nataperm 
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natalog 
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natgperm
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natqadd 
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natqchg
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natqdel
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natqlist
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natrebuild
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natalist
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natglist
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natdump
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/naterase
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natcmd
+	ln $(OWNHOME)/bin/nat  $(OWNHOME)/bin/natcalc
+#
+# Create the queue directory
+#
+	mkdir $(DEFSUPERNAT)
+	chown $(OWNUSER) $(DEFSUPERNAT)
+	chgrp $(OWNGRP) $(DEFSUPERNAT)
+	mkdir $(DEFSUPERNAT)/log
+	chown $(OWNUSER) $(DEFSUPERNAT)/log
+	chgrp $(OWNGRP) $(DEFSUPERNAT)/log
+	chmod 0770 $(DEFSUPERNAT)/log
+	cp Queuelist.V3 $(DEFSUPERNAT)/Queuelist
+	chown $(OWNUSER) $(DEFSUPERNAT)/Queuelist
+	chgrp $(OWNGRP) $(DEFSUPERNAT)/Queuelist
+	chmod 0664 $(DEFSUPERNAT)/Queuelist
+	cat /dev/null > $(DEFSUPERNAT)/Activity
+	chown $(OWNUSER) $(DEFSUPERNAT)/Activity
+	chgrp $(OWNGRP) $(DEFSUPERNAT)/Activity
+	chmod 0660 $(DEFSUPERNAT)/Activity
+	echo rwx$(OWNUSER) > $(DEFSUPERNAT)/Userlist
+	echo rwxroot >> $(DEFSUPERNAT)/Userlist
+	chown $(OWNUSER) $(DEFSUPERNAT)/Userlist
+	chgrp $(OWNGRP) $(DEFSUPERNAT)/Userlist
+	chmod 0664 $(DEFSUPERNAT)/Userlist
+	$(OWNHOME)/bin/natcalc -n $(DEFSUPERNAT)/supernatdb -c < /dev/null
+	chown $(OWNUSER) $(DEFSUPERNAT)/supernatdb
+	chgrp $(OWNGRP) $(DEFSUPERNAT)/supernatdb
+	chmod 0664 $(DEFSUPERNAT)/supernatdb

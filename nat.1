@@ -1,0 +1,223 @@
+.\" Copyright (c) E2 Systems.
+.\" Some of the wording copyright Regents of the University of California
+.\" @(#) $Name$ $Id$ Copyright (c) E2 Systems Limited 1992.
+.TH NAT 1 "17 October 1991"
+.SH NAME
+nat \- execute commands at a later time somewhere
+.SH SYNOPSIS
+.B nat  
+.RB [ " \-csmiq queue -j jobname -x command_string -o old_queue -p old_job " ] 
+.RB [ " \-r -t periodicity " ] 
+.I time
+.RI [ " date " ]
+.RB [ " week " ]
+.RI [ " script " ]
+.SH DESCRIPTION
+.IX  nat  ""  "\fLnat\fP \(em do job at specified time somewhere"
+.IX  "timed event services"  "nat command"  ""  "\fLnat\fP \(em do job at specified time somewhere"
+.IX "delayed execution" "add job to network queue \(em \fLnat\fR"
+.I nat
+spools a copy of the named
+.I script
+for execution at a later date or time.
+.I script
+is the name of a file to be used as command input for the 
+Bourne shell, 
+.IR sh (1),
+the C-Shell,
+.IR csh (1),
+or an arbitrary shell specified by the
+.RB SHELL
+environment variable.
+.PP
+The
+.I time
+argument consists of 1 to 4 digits, followed by an optional
+`A' or `P' for AM or PM
+(if no letters follow the digits, a 24-hour clock is assumed).
+One- and two-digit numbers are taken to be hours; three and four digits
+specify hours and minutes.  An optional colon (`:') may be used to
+separate the hour and minute fields.  Alternatively, `N' or `M',
+optionally preceded by `12', `1200', or `12:00',
+may be used to specify noon or midnight.
+.PP
+The optional
+.I date
+argument
+is either the name of a month, followed by a day-of-the-month number,
+or a named day-of-the-week; if the keyword \fBweek\fP follows, 
+execution is moved out by seven days.
+Names of months and days must be specified as the first three letters
+of the month or day.
+.LP
+If
+.I script
+is omitted, command input is accepted from the standard input.
+.PP
+The spool file includes a four-line header that indicates the owner 
+of the job, the name of the 
+.I script
+the shell is to use, and whether mail is to be sent.
+.LP
+This header is followed by a
+.I cd
+command to the current directory (from which
+.I nat
+was called) and a 
+.I umask
+command to set the modes on any files created by the job.
+.I nat
+also copies all environment variables except TERM and TERMCAP to the spool file.
+.LP
+.I script 
+is run by a procedure vaguely analogous to rsh.
+.PP
+.I nat
+jobs are executed by the command 
+.BR /usr/nat/bin/natrun.
+The precise timing of each
+.I nat
+job depends upon what else \fInatrun\fP is doing at the time.
+.SH OPTIONS
+.TP
+.B \-c
+C-Shell.  
+.IR csh (1)
+is used to execute
+.I script.
+.TP
+.B \-s
+Standard (Bourne) shell, System V version
+.IR sh5 (1)
+on Ultrix, sh on everything else, is used to execute the job.
+.LP
+If neither 
+.BR \-c ,
+nor
+.B \-s
+is specified, 
+.I nat
+uses the value of the 
+.SM SHELL
+environment variable to determine which shell to use.
+.TP
+.B \-q queue
+Execute the job in queue queue, rather than the default, nat.
+.TP
+.B \-j jobname
+Give the job the name jobname, rather than the default, which is
+stdin for jobs entered in line, and the name of the submitted script
+for submitted scripts, and the command name for executed commands.
+.TP
+.B \-x command_string
+Execute the command string, which can contain arguments, rather than
+a file.
+.TP
+.B \-m
+Mail.  Send mail after the job has been run.  
+If errors occur during execution of the 
+.IR script , 
+then resulting error messages are included in the mail message. Regardless
+of the setting of
+.B \-m
+stdout and stderr from the job can be redirected by natrun.
+.TP
+.B \-p job number
+Change an existing job (number specified)
+.TP
+.B \-o old queue
+Change an existing job in the old queue specified.
+.TP
+.B \-e 
+Indicate that the job is to be expressed (goes to the head of the queue).
+.TP
+.B \-u 
+Change the job user (superuser only).
+.TP
+.B \-g 
+Change the job group (superuser only).
+.TP
+.B \-k 
+Keep the log file (the default is to remove it).
+.TP
+.B \-r 
+Indicate that the job is restartable
+.TP
+.B \-t periodicity 
+Indicate that the job is to be resubmitted on completion hourly (h),
+daily (d) or weekly (w), or according to the named rules (rule_name).
+.SH EXAMPLES
+.TP
+.B \-i
+Execute immediately (ie. not at a time)
+.SH EXAMPLES
+.IP
+at 8am jan 24 
+.br
+nat -s 1200n week
+.br
+nat -c -m 1530 fri week
+.SH "DIAGNOSTICS
+Complains about various syntax errors and times that are out of range.
+Also complains if natrun doesn't appear to be running, but the job is
+still submitted, and will be executed when natrun is started.
+.SH FILES
+.PD 0
+.TP "\w'/usr/spool/nat/yy.ddd.hhhh.pid\ \ \ 'u"
+.I /usr/spool/nat
+spooling area
+.TP
+.I /usr/spool/nat/yy.ddd.hhhh.pid
+job file
+.TP
+.I /usr/spool/nat/past
+directory where jobs are executed from
+.TP
+.I /usr/spool/nat/lasttimedone
+last time \fInatrun\fP was run (seconds since 1970)
+.TP
+.I /usr/lib/natrun
+job initiator
+.TP
+.I /usr/spool/supernat_fifo
+natrun communication FIFO
+.TP
+.I /tmp/supernat_lock
+natrun communication FIFO lock file
+.PD
+.SH "INSTALLATION"
+.B nat
+must be owner natman, group daemon, and mode 06755.
+.PP
+The
+.B /usr/spool/nat
+directory needs to be exported by the machine chosen as
+the home for the spool area, and mounted by each host that is to make use
+of the service. It should be writeable only by daemon.
+.SH "SEE ALSO"
+natq(1), natrm(1), cron(8), natrun(8)
+.SH "NOTES
+There may be problems attempting to schedule jobs almost exactly 24 hours ahead.
+.LP
+nat runs setuid() to natman. If natman cannot getwd() your directory, it
+will fail!
+.LP
+If the system crashes, mail stating that
+the job was not completed is not sent to the user, although a cleanup
+message appears in the Activity log.
+.LP
+Shell interpreter specifiers (e.g., #!/bin/csh ) in the beginning of
+\fIscript\fP are ignored, if the -x option is not selected.
+.LP
+As a setuid() program, nat runs with a secure path. It saves the
+original path in an environment variable NATPATH, so that it can be
+placed in the job file. This means that the environment variable
+name NATPATH is reserved.
+.LP
+This string should not appear in the shell input.
+.TP
+\.\.\.the rest of this file is shell input
+.LP
+This command should not appear in the shell input.
+.TP
+echo '### This is the end marker ###'

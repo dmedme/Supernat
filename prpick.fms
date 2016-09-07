@@ -1,0 +1,148 @@
+echo Please wait....
+lpfile=$1
+
+
+if [ $printerset ]
+   then :
+else
+
+if [ -t 0 ]
+then
+	:
+else
+	echo ERROR:prpick cannot find terminal.             
+	exit 2 
+fi 
+incmd=$1
+shift
+cmdline="$@"
+srcfile="/tmp/form.$$"
+clear="" 			# Do not clear screen
+logerr=""
+printers=`cut -f2 -d: .printers /usr/local/lib/printers 2>/dev/null \
+| nawk '{printf("/%s",$1)}'`
+printhelp=`cut -f1 -d: .printers /usr/local/lib/printers 2>/dev/null \
+| nawk '{printf("h=%s %s %s %s %s %s %s@",$1,$2,$3,$4,$5,$6,$7)}'`
+sf  -o $srcfile -r -m $clear -b << sf_eof
+	Glasgow City Council `uname -n` : Printer Choice
+
+
+
+
+        Please choose a printer by pressing the space bar
+
+
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+
+
+
+
+
+
+
+F1 - Help	Enter - Process form       CTRL-C - Abort form
+
+`echo $logerr`
+
+@v=printer@s=$printers@
+@$printhelp
+sf_eof
+if [ -f $srcfile ] 
+    then 
+	. $srcfile
+	rm $srcfile
+	if [ -z "$printer" ]
+	then
+	    exit
+	fi
+    else
+	exit
+fi
+srcfile="/tmp/form.$$"
+clear=""
+logerr=""
+set - `grep $printer /usr/local/lib/printers | nawk -F[:] '{printf("%s %s %s %s",$2,$3,$4,$5) }'`
+mode="/$2/$3"
+ptype=$4
+if [ "$2" != "$3" ]
+then
+sf  -o $srcfile -r -m $clear -b << sf_eof
+        Glasgow City Council `uname -n` : Printer Choice
+
+
+
+
+
+
+        
+                  Printing to $printer
+
+
+
+                         Print Mode
+
+                         ~~~~~~~~~~
+
+
+
+
+
+F1 - Help       Enter - Process form       CTRL-C - Abort form
+
+`echo $logerr`
+
+@v=pmode@s=$mode@
+sf_eof
+if [ -f $srcfile ]
+    then
+        . $srcfile
+        rm $srcfile
+        if [ -z "$pmode" ]
+        then
+            exit
+        fi
+    else
+        exit
+fi
+else
+	pmode=$2
+fi
+
+printerset=1
+export printer pmode ptype printerset
+
+if [ "$incmd" = "-b" ]
+   then
+	eval $cmdline
+        exit $?
+fi
+
+fi
+
+echo printer=$printer pmode=$pmode ptype=$ptype
+echo `grep $printer /usr/local/lib/printers` > .printers
+case $ptype in
+	p) /usr/lib/lp/postscript/postprint -s 8 -l 0 -p $pmode <$lpfile | lp -d $printer -o nobanner ;;
+	h) case $pmode in
+		portrait) lp -o nobanner -d $printer $lpfile ;;
+		landscape) lp -o nobanner -d ${printer}l $lpfile 
+	   esac ;;
+	jd-s) case $pmode in
+		portrait) lp -o nobanner -d $printer $lpfile ;;
+		landscape) lp -o nobanner -o landscape -o 12 -d $printer $lpfile
+	   esac ;;
+	pc-mt) case $pmode in 
+		portrait) vtprint -q $lpfile ;;
+		landscape) vtprint -q -e $lpfile
+		esac ;;
+	pc-hp) case $pmode in
+		portrait) vtprint -q $lpfile ;;
+		landscape) vtprint -q -j $lpfile
+		esac ;;
+	b) echo blp $lpfile ;;
+	*) lp -o nobanner -d $printer $lpfile;;
+esac

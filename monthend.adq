@@ -1,0 +1,19 @@
+# monthend.adq - rules for a job that runs on the last day of each month
+# @(#) $Name$ $Id$
+# Copyright (c) E2 Systems Limited 1993
+#
+DEFINE=MONTH_END
+# Put the job on hold if the month end days are not up to date
+SUBMITTED=(me1<sysdate&&me2<sysdate&&me3<sysdate&&me4<sysdate&&me5<sysdate&&me6<sysdate&&me7<sysdate&&me8<sysdate&&me9<sysdate&&me10<sysdate&&me11<sysdate&&me12<sysdate){hold(0);}
+# Put out a message if the job goes on hold
+HELD=0 == 1 err_clr("Job " + get_job_no() + " now on hold");
+# Carry out the submission test on release
+RELEASED= (me1<sysdate&&me2<sysdate&&me3<sysdate&&me4<sysdate&&me5<sysdate&&me6<sysdate&&me7<sysdate&&me8<sysdate&&me9<sysdate&&me10<sysdate&&me11<sysdate&&me12<sysdate){hold(0);}
+STARTED=xtod=trunc(sysdate); (xtod==me1||xtod==me2||xtod==me3||xtod==me4||xtod==me5||xtod==me6||xtod==me7||xtod==me8||xtod==me9||xtod==me10||xtod==me11||xtod==me12);
+SUCCEEDED=x = get_time(0); y = (x < me1)? me1 : x; y = (x < me2)?((y == x || y > me2)? me2 :y):y; y = (x < me3)?((y == x || y > me3)? me3 :y):y; y = (x < me4)?((y == x || y > me4)? me4 :y):y; y = (x < me5)?((y == x || y > me5)? me5 :y):y; y = (x < me6)?((y == x || y > me6)? me6 :y):y; y = (x < me7)?((y == x || y > me7)? me7 :y):y; y = (x < me8)?((y == x || y > me8)? me8 :y):y; y = (x < me9)?((y == x || y > me9)? me9 :y):y; y = (x < me10)?((y == x || y > me10)? me10 :y):y; y = (x < me11)?((y == x || y > me11)? me11 :y):y; y = (x < me12)?((y == x || y > me12)? me12 :y):y;re_queue(get_time(0) + (y - x));
+FAILED=hold(0);
+TEST1=me_fred1
+TEST2=me_fred2
+TEST3=me_fred3
+TEST4=me_fred4
+END

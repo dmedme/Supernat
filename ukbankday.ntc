@@ -1,0 +1,11 @@
+# uk_bank_day.ntc - define the bank holidays
+# @(#) $Name$ $Id$
+# Copyright (c) E2 Systems Limited 1993
+uk_bank1=to_date('1-JAN-93','DD-MON-YY');
+uk_bank2=to_date('9-APR-93','DD-MON-YY');
+uk_bank3=to_date('12-APR-93','DD-MON-YY');
+uk_bank4=to_date('3-MAY-93','DD-MON-YY');
+uk_bank5=to_date('31-MAY-93','DD-MON-YY');
+uk_bank6=to_date('30-AUG-93','DD-MON-YY');
+uk_bank7=to_date('25-DEC-93','DD-MON-YY');
+uk_bank8=to_date('27-DEC-93','DD-MON-YY');

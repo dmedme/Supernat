@@ -1,0 +1,180 @@
+.\" Copyright (c) E2 Systems.
+.\" @(#) $Name$ $Id$ Copyright (c) E2 Systems Limited 1992.
+.TH NATRUN 8 "17 December 1992"
+.SH NAME
+natrun \- process network commands at a later time
+.SH SYNOPSIS
+.B natrun  
+.RB [ " \-h " ] 
+.RB [ " \-s max " ]
+.SH DESCRIPTION
+.IX  natrun  ""  "\fLnatrun\fP \(em do job at specified time"
+.IX  "timed event services"  "natrun command"  "job scheduler"  "\fLnatrun\fP \(em do job at specified time somewhere"
+.IX "delayed execution" "execute job in queue \(em \fLnatrun\fR"
+.I natrun
+processes jobs spooled by nat(1).
+.PP
+It is started from /etc/rc.local, eg. with
+.PP
+.B /usr/lib/natrun -s 3 > /usr/spool/nat/natrun.log 2>&1 &
+.PP
+Note that you must manually remove the submission fifo
+(eg. rm -f /usr/spool/nat/supernat_fifo) if natrun was not shut down
+with a signal 15, before natrun will run. You may also have to remove
+the lock file, /usr/spool/nat/supernat_lock.
+.PP
+Note also that it does not detach itself automatically; it should be
+specifically run asynchronously.
+.PP
+A job is executed at the earliest opportunity following its specified
+start time, provided that the rules about the maximum simultaneous
+processes and queue availability can be complied with.
+.PP
+stdout and stderr from the jobs can be redirected anywhere, as convenient.
+.SH OPTIONS
+.PP
+Availability is in the Queuelist file.
+.PP
+There are no default queues.  However, the utilities all assume a default
+of nat, and this queue should always be specified, using natqadd.
+.PP
+The PRIORITY is a positive integer (default 1). It should reflect the
+relative queue preferences. It does not relate to the Operating System
+priority.
+.PP
+The MAX_SIMUL is the maximum number of siumultaneous processes that a queue
+is supposed to run, between the START and END.
+.PP
+The START is a time in the 24 hour clock, default 00:00.
+.PP
+The END is a time in the 24 hour clock, default 24:00. 24:00 and 2400, although
+not strictly speaking valid times, are recognised as special cases.
+.PP
+An invalid time is taken to be the default.
+.PP
+If START is after END, two ranges are assumed; (00:00 - END) and
+(START - 24:00).
+.TP
+.B \-h
+outputs a summary of the options. In addition, if this is fed on the
+submission FIFO (see below), the program exits.
+.TP
+.B \-s max
+indicates the maximum number of simultaneous processes allowed by natrun,
+for all queues put together. The default is 3.
+.TP
+.B \-t
+indicates that lines emitted by jobs on stdout and stderr are tagged in
+the logs with which descriptor (O = stdout, E = stderr) they were emitted
+on, and the time, to the nearest second.
+.TP
+.SH "DIAGNOSTICS
+Details of jobs being executed are output to stderr, and to the Activity list.
+.PP
+Output from jobs is routed to stdout and stderr, as appropriate.
+.PP
+Complains about invalid options, and job failures, to stderr and the Activity
+list.
+.PP
+It can be prompted to give its queue configuration on stderr by
+writing "-d" to the submission FIFO, /usr/spool/supernat_fifo.
+.PP
+The global maximum simultaneous processes can be changed by
+writing "-s new_limit"
+to the submission FIFO, /usr/spool/supernat_fifo.
+.PP
+All writes to the FIFO should be preceded by creating the lock file,
+.B /usr/spool/nat/supernat_lock.
+The semlock program will do this for you, with the -s flag and the
+name of the lock file as arguments. natrun removes the lock file itself.
+.SH FILES
+.PD 0
+.TP "\w'/usr/spool/nat\ \ \ 'u"
+.I /usr/spool/nat
+spooling area
+.TP
+.I Queuelist
+List of available queues
+.TP
+.I Activity
+Log of of events
+.TP
+.I supernatdb
+Database of internal information
+.TP
+.I sacct
+Accounting log, similar in format to the system accounting file. Use
+hisps to view it.
+.TP
+.I
+Userlist
+List of registered users and permissions (r - read-only; w - can create jobs; x - can create queues)
+.TP
+.I /usr/spool/nat/log
+Job log file directory.
+.TP
+.I /usr/spool/nat/Locnnnnn
+Job directory
+.TP
+.I /usr/spool/nat/G.Locnnnnn
+user permissions for the job directory
+.TP
+.I /usr/spool/nat/Locnnnnn/yy.ddd.hhmm.id
+job file (times are GMT)
+.TP
+.TP
+.I /usr/spool/nat/Locnnnnn/lasttimedone
+last time \fInatrun\fP was run on this queue (seconds since 1970, GMT)
+.TP
+.I /usr/lib/natrun
+job initiator 
+.TP
+.I /usr/spool/nat/supernat_fifo
+FIFO for communicating with natrun.
+.TP
+.I /usr/spool/nat/supernat_lock
+lock file for communicating with natrun using the FIFO.
+.PD
+.SH "INSTALLATION"
+.PP
+.B make -f Mk.{ultrix, sunos, aix, sco or whatever} install
+carries out an installation of natrun, assuming that the distributed
+files are in the current directory. You need to be superuser to execute
+this.
+.PP
+The following remarks are for information only; the make file does the needful.
+.PP
+.B natrun
+must be owner root, group daemon, and mode 06750.
+.PP
+The
+.B /usr/spool/nat
+is the default queue directory. It should be writeable only by owner and group.
+It should contain a list of queues (Queuelist), a list of Users (Userlist),
+an activity log (Activity), and execution directories corresponding to the
+queues (Locnnnnn), and lists of User Queue permissions, by queue (G.Locnnnnn).
+.PP
+Execution directories have in them a file called lasttimedone that contains
+the seconds since 1970 that natrun last ran on this queue.
+.PP
+The available queue file must be set up. The natqadd,
+natqchg and natqdel facilities are provided. Arguments to these functions
+should follow the syntax indicated in the manual.
+.PP
+Make sure that UNIX process tables are configured with
+sufficient entries to accommodate jobs being run.
+.SH "SEE ALSO"
+natq(1), natrm(1), nat(1)
+.SH "BUGS
+.LP
+Shell interpreter specifiers (e.g., #!/bin/csh ) in the beginning of
+\fIscript\fP are ignored. The work around is to use the nat "-x" option.
+If you do this, you can also pass parameters.
+.LP
+This string should not appear in the shell input.
+.TP
+         ...the rest of this file is shell input
+.LP
+This command should not appear in the shell input.
+.TP
+echo '### This is the end marker ###'
